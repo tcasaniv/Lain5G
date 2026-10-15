@@ -164,6 +164,28 @@ def test_bootstrap_dry_run_installs_tools_and_downloads_everything():
     assert "MAQUINA PREPARADA" in result.stdout
 
 
+def test_bootstrap_dry_run_dnf_installs_tools_and_downloads_everything():
+    env = {
+        **os.environ,
+        "LAIN5G_BOOTSTRAP_FORCE_MISSING": "venv,node,npm,git,make,docker,util-linux,compose",
+        "LAIN5G_BOOTSTRAP_PACKAGE_MANAGER": "dnf",
+    }
+
+    result = subprocess.run(
+        [str(ROOT / "lain5g"), "bootstrap", "--dry-run", "--yes"],
+        cwd=ROOT,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    assert "dnf install -y python3 nodejs npm git make moby-engine util-linux docker-compose" in result.stdout
+    assert "systemctl enable --now docker" in result.stdout
+    assert "MAQUINA PREPARADA" in result.stdout
+
+
 def test_bootstrap_requires_group_activation_in_the_current_shell(tmp_path: Path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()

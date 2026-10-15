@@ -367,6 +367,28 @@ def _apt_venv_package(*, dry_run: bool) -> str:
     return "python3-venv"
 
 
+def _dnf_compose_package(*, dry_run: bool) -> str:
+    if dry_run or shutil.which("dnf") is None:
+        return "docker-compose"
+    for candidate in ("docker-compose", "docker-compose-plugin"):
+        if subprocess.run(
+            ["dnf", "info", "-C", candidate],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        ).returncode == 0:
+            return candidate
+    for candidate in ("docker-compose", "docker-compose-plugin"):
+        if subprocess.run(
+            ["dnf", "info", candidate],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        ).returncode == 0:
+            return candidate
+    return "docker-compose"
+
+
 def _group_names(user: str = "") -> set[str]:
     if shutil.which("id") is None:
         return set()
@@ -399,7 +421,7 @@ def _bootstrap_install_commands(manager: str, features: set[str], privileged: li
             packages.append(_apt_compose_package(dry_run=dry_run))
         return [[*privileged, "apt-get", "update"], [*privileged, "apt-get", "install", "-y", *packages]]
     mappings = {
-        "dnf": {"python": "python3", "venv": "python3", "node": "nodejs", "npm": "npm", "git": "git", "make": "make", "docker": "moby-engine", "util-linux": "util-linux", "compose": "docker-compose-plugin"},
+        "dnf": {"python": "python3", "venv": "python3", "node": "nodejs", "npm": "npm", "git": "git", "make": "make", "docker": "moby-engine", "util-linux": "util-linux", "compose": _dnf_compose_package(dry_run=dry_run) if manager == "dnf" else "docker-compose-plugin"},
         "pacman": {"python": "python", "venv": "python", "node": "nodejs", "npm": "npm", "git": "git", "make": "make", "docker": "docker", "util-linux": "util-linux", "compose": "docker-compose"},
         "zypper": {"python": "python3", "venv": "python3-venv", "node": "nodejs", "npm": "npm", "git": "git", "make": "make", "docker": "docker", "util-linux": "util-linux", "compose": "docker-compose"},
     }
